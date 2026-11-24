@@ -317,6 +317,74 @@
   }
   .toast.show{opacity:1;transform:translate(-50%,0)}
 
+  /* ── 보기 전환 ────────────────────────────────── */
+  .viewbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 0 10px}
+  .seg{display:inline-flex;background:#EDEDEA;border-radius:9px;padding:2px;gap:2px}
+  .seg-btn{
+    height:32px;padding:0 14px;border:none;border-radius:7px;background:transparent;
+    color:var(--sub);font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;gap:5px;
+    transition:background .12s,color .12s,box-shadow .12s;
+  }
+  .seg-btn.on{background:var(--surface);color:var(--text);font-weight:600;box-shadow:0 1px 2px rgba(15,15,15,.06)}
+  .seg-btn:active{color:var(--text)}
+
+  /* ── 먼슬리 달력 ──────────────────────────────── */
+  #monthView[hidden]{display:none}
+  .cal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 2px 10px}
+  .cal-title{font-size:16px;font-weight:700;letter-spacing:-.01em}
+  .cal-tools{display:flex;align-items:center;gap:4px}
+  .cal-nav{
+    width:32px;height:32px;border:none;border-radius:8px;background:transparent;
+    color:var(--sub);font-size:19px;line-height:1;display:grid;place-items:center;padding:0;
+  }
+  .cal-nav:active{background:var(--hover)}
+  .cal-today{
+    height:30px;padding:0 11px;border:1px solid var(--border);border-radius:8px;
+    background:var(--surface);color:var(--sub);font-size:12.5px;font-weight:500;
+  }
+  .cal-today:active{background:var(--hover)}
+  .cal-dow{display:grid;grid-template-columns:repeat(7,1fr);padding:0 2px 6px}
+  .cal-dow span{text-align:center;font-size:11.5px;font-weight:600;color:var(--faint)}
+  .cal-dow .sun{color:#CE6B5A}
+  .cal-dow .sat{color:#5C7FCE}
+  .cal-grid{
+    display:grid;grid-template-columns:repeat(7,1fr);gap:3px;
+    background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:6px;
+    box-shadow:0 1px 2px rgba(15,15,15,.025);
+  }
+  .cal-cell{
+    position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;
+    min-width:0;min-height:46px;padding:5px 2px 4px;border:none;border-radius:9px;
+    background:transparent;transition:background .12s,box-shadow .12s;
+  }
+  .cal-cell:active{background:var(--hover)}
+  .cal-cell.out .cal-num{color:#C9C8C3}
+  .cal-cell.sel{background:var(--accent-soft);box-shadow:inset 0 0 0 1px #CBE2FA}
+  .cal-num{
+    display:grid;place-items:center;width:23px;height:23px;border-radius:50%;
+    font-size:12.5px;font-weight:500;color:var(--text);line-height:1;
+  }
+  .cal-cell.today .cal-num{background:#37352F;color:#fff;font-weight:600}
+  .cal-dots{display:flex;align-items:center;justify-content:center;gap:1px;height:12px;overflow:hidden;max-width:100%}
+  .cal-dot{font-size:8.5px;line-height:1}
+  .cal-more{font-size:9px;color:var(--faint);line-height:1}
+  .day-sec{margin-top:16px}
+  .day-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 2px 8px}
+  .day-title{font-size:14.5px;font-weight:600}
+  .day-title .dow{color:var(--faint);font-weight:500;font-size:13px;margin-left:5px}
+  .day-empty{
+    text-align:center;padding:26px 16px;color:var(--faint);font-size:13px;line-height:1.7;
+    background:var(--surface);border:1px dashed var(--border);border-radius:12px;
+  }
+  .day-add{
+    width:100%;height:46px;margin-top:10px;border:1px solid var(--border);border-radius:11px;
+    background:var(--surface);color:var(--text);font-size:14px;font-weight:600;
+  }
+  .day-add:active{background:var(--hover)}
+  .date-row{display:flex;align-items:center;gap:8px}
+  .date-row .input{flex:1;min-width:0}
+  .btn.tiny{height:42px;padding:0 14px;flex:0 0 auto}
+
   @media (prefers-reduced-motion:reduce){
     *{transition:none!important;animation:none!important}
   }
@@ -356,7 +424,14 @@
   </header>
 
   <main>
-    <div class="list-meta">
+    <div class="viewbar">
+      <div class="seg" role="tablist" aria-label="보기 방식">
+        <button class="seg-btn on" id="btnViewList" type="button" data-view="list" role="tab" aria-selected="true">목록</button>
+        <button class="seg-btn" id="btnViewMonth" type="button" data-view="month" role="tab" aria-selected="false"><span>📅</span>먼슬리</button>
+      </div>
+    </div>
+
+    <div class="list-meta" id="listMeta">
       <span id="countLine">전체 0개</span>
       <span class="hint" id="sortHint">고정 → 최신 순</span>
     </div>
@@ -365,6 +440,31 @@
       <span class="big">🗂</span>
       <span id="emptyText">아직 항목이 없어요.<br>오른쪽 아래 + 로 첫 항목을 추가해 보세요.</span>
     </div>
+
+    <section id="monthView" hidden aria-label="먼슬리 달력">
+      <div class="cal-head">
+        <div class="cal-title" id="calTitle">—</div>
+        <div class="cal-tools">
+          <button class="cal-today" id="calToday" type="button">오늘</button>
+          <button class="cal-nav" id="calPrev" type="button" aria-label="이전 달">‹</button>
+          <button class="cal-nav" id="calNext" type="button" aria-label="다음 달">›</button>
+        </div>
+      </div>
+      <div class="cal-dow" aria-hidden="true">
+        <span class="sun">일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span class="sat">토</span>
+      </div>
+      <div class="cal-grid" id="calGrid" role="grid" aria-label="월간 달력"></div>
+
+      <div class="day-sec">
+        <div class="day-head">
+          <div class="day-title" id="dayTitle">—</div>
+          <div class="hint" id="dayCount"></div>
+        </div>
+        <div id="dayList"></div>
+        <div class="day-empty" id="dayEmpty" hidden>이 날에는 기록이 없어요.<br>아래 버튼으로 바로 남겨 보세요.</div>
+        <button class="btn day-add" id="btnAddDay" type="button">+ 이 날에 기록 추가</button>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -391,6 +491,14 @@
     <div class="field">
       <div class="label">카테고리</div>
       <div class="pick-chips" id="catPicker"></div>
+    </div>
+
+    <div class="field">
+      <div class="label">날짜</div>
+      <div class="date-row">
+        <input class="input" id="fDate" type="date" aria-label="날짜">
+        <button class="btn tiny" id="fDateToday" type="button">오늘</button>
+      </div>
     </div>
 
     <div class="field">
@@ -521,7 +629,7 @@
      상태
      ────────────────────────────────────────────── */
   var state = null;
-  var ui = { query: '', cat: 'all' };
+  var ui = { query: '', cat: 'all', view: 'list', y: new Date().getFullYear(), m: new Date().getMonth(), day: todayKey() };
   var openSheets = [];
   var editingId = null;
   var draftEmoji = '📝';
@@ -562,11 +670,13 @@
       if (!title) return;
       var created = num(it.createdAt) || Date.now();
       var updated = num(it.updatedAt) || created;
+      var dk = isDateKey(it.date) ? it.date : dateKeyFromTs(created);
       items.push({
         id: str(it.id).trim() || uid(),
         emoji: str(it.emoji).trim() || '📝',
         title: title.slice(0, 200),
         categoryId: known[it.categoryId] ? it.categoryId : cats[0].id,
+        date: dk,
         note: str(it.note).slice(0, 5000),
         url: str(it.url).slice(0, 1000),
         pinned: !!it.pinned,
@@ -616,32 +726,38 @@
     var items = [
       {
         id: uid(), emoji: '📊', title: '물 마시기 8잔', categoryId: 'tracker',
+        date: todayKey(),
         note: '오늘 5 / 8잔\n일어나서 한 잔, 식사 전에 한 잔씩.',
         url: '', pinned: true, createdAt: now - 3 * D, updatedAt: now - 2 * H
       },
       {
         id: uid(), emoji: '📔', title: '오늘의 기록', categoryId: 'diary',
+        date: todayKey(),
         note: '아침엔 조금 쌀쌀했고 오후엔 햇빛이 좋았다.\n내일은 일찍 자고 일어나기.',
         url: '', pinned: false, createdAt: now - 5 * H, updatedAt: now - 4 * H
       },
       {
         id: uid(), emoji: '📅', title: '이번 주 금요일 저녁 약속', categoryId: 'schedule',
+        date: dateKeyFromTs(now + 3 * D),
         note: '저녁 7시 · 계산동 근처\n가기 전에 30분 일찍 나가기.',
         url: '', pinned: false, createdAt: now - 2 * D, updatedAt: now - 7 * H
       },
       {
         id: uid(), emoji: '📝', title: '장보기 목록', categoryId: 'memo',
+        date: dateKeyFromTs(now - 1 * D),
         note: '우유, 달걀, 두부\n샴푸, 주방 세제\n간식은 하나만.',
         url: '', pinned: false, createdAt: now - 1 * D, updatedAt: now - 1 * D
       },
       {
         id: uid(), emoji: '🔗', title: '노션 템플릿 갤러리', categoryId: 'link',
+        date: dateKeyFromTs(now - 2 * D),
         note: '레이아웃 참고용으로 모아 둔 곳.',
         url: 'https://www.notion.so/templates', pinned: false,
         createdAt: now - 4 * D, updatedAt: now - 2 * D
       },
       {
         id: uid(), emoji: '📝', title: '자기 전 스트레칭 루틴', categoryId: 'memo',
+        date: dateKeyFromTs(now - 3 * D),
         note: '1. 어깨 돌리기 10회\n2. 목 좌우로 천천히 5회\n3. 벽 짚고 가슴 열기 20초',
         url: '', pinned: false, createdAt: now - 5 * D, updatedAt: now - 3 * D
       }
@@ -662,6 +778,27 @@
   }
 
   function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+  /* 날짜 키(YYYY-MM-DD) — 기존 항목은 createdAt 날짜로 호환 */
+  function parseDateKey(v) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str(v));
+    if (!m) return null;
+    var y = Number(m[1]), mo = Number(m[2]) - 1, da = Number(m[3]);
+    var d = new Date(y, mo, da);
+    if (d.getFullYear() !== y || d.getMonth() !== mo || d.getDate() !== da) return null;
+    return d;
+  }
+  function isDateKey(v) { return typeof v === 'string' && !!parseDateKey(v); }
+  function dateKeyFromDate(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function dateKeyFromTs(ts) {
+    var n = Number(ts);
+    return dateKeyFromDate(new Date(n && isFinite(n) ? n : Date.now()));
+  }
+  function todayKey() { return dateKeyFromDate(new Date()); }
+  function itemDate(it) {
+    if (it && isDateKey(it.date)) return it.date;
+    return dateKeyFromTs(it ? it.createdAt : Date.now());
+  }
 
   function sameDay(a, b) {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -782,6 +919,16 @@
     var dateTxt = (edited ? '수정 ' : '작성 ') + timeLabel(edited ? it.updatedAt : it.createdAt);
     var href = safeHref(it.url);
 
+    var dk = itemDate(it);
+    var dateBadge = '';
+    if (dk && dk !== todayKey()) {
+      var dd = parseDateKey(dk);
+      if (dd) {
+        var lbl = (dd.getFullYear() !== new Date().getFullYear() ? dd.getFullYear() + '년 ' : '') + (dd.getMonth() + 1) + '월 ' + dd.getDate() + '일';
+        dateBadge = '<span class="badge">🗓 ' + esc(lbl) + '</span>';
+      }
+    }
+
     var html = '<article class="card" data-card="' + esc(it.id) + '" tabindex="0" role="button" aria-label="' + esc(it.title) + ' 편집">';
     html += '<div class="card-top">';
     html += '<div class="card-emoji" aria-hidden="true">' + esc(it.emoji) + '</div>';
@@ -789,7 +936,7 @@
     html += '<div class="title-row"><h3 class="card-title">' + esc(it.title) + '</h3>';
     html += '<button class="pin-btn' + (it.pinned ? ' on' : '') + '" data-pin="' + esc(it.id) + '" aria-label="' + (it.pinned ? '고정 해제' : '상단 고정') + '" aria-pressed="' + (!!it.pinned) + '">' + (it.pinned ? '★' : '☆') + '</button>';
     html += '</div>';
-    html += '<div class="card-sub"><span class="badge">' + esc(catLabel) + '</span><span>' + esc(dateTxt) + '</span></div>';
+    html += '<div class="card-sub"><span class="badge">' + esc(catLabel) + '</span>' + dateBadge + '<span>' + esc(dateTxt) + '</span></div>';
     if (it.note) html += '<p class="card-note">' + esc(it.note) + '</p>';
     if (href) {
       html += '<a class="link-chip" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">';
@@ -833,9 +980,105 @@
     $('sortHint').textContent = list.length && state.items.some(function (i) { return i.pinned; }) ? '고정 → 최신 순' : '최신 순';
   }
 
+  function renderViewTabs() {
+    var month = ui.view === 'month';
+    var a = $('btnViewList'), b = $('btnViewMonth');
+    a.classList.toggle('on', !month);
+    a.setAttribute('aria-selected', String(!month));
+    b.classList.toggle('on', month);
+    b.setAttribute('aria-selected', String(month));
+  }
+
+  function setView(v) {
+    ui.view = (v === 'month') ? 'month' : 'list';
+    if (ui.view === 'month') {
+      if (!isDateKey(ui.day)) ui.day = todayKey();
+      var d = parseDateKey(ui.day);
+      if (d && ui.y !== d.getFullYear() && ui.m !== d.getMonth()) {
+        ui.y = d.getFullYear();
+        ui.m = d.getMonth();
+      }
+    }
+    renderAll();
+  }
+
+  function shiftMonth(delta) {
+    var d = new Date(ui.y, ui.m + delta, 1);
+    ui.y = d.getFullYear();
+    ui.m = d.getMonth();
+    renderMonth();
+  }
+
+  function renderMonth() {
+    if (!ui || ui.view !== 'month') return;
+    var y = ui.y, m = ui.m;
+    $('calTitle').textContent = y + '년 ' + (m + 1) + '월';
+
+    var base = visibleItems();
+    var byDate = {};
+    base.forEach(function (it) {
+      var k = itemDate(it);
+      if (!byDate[k]) byDate[k] = [];
+      byDate[k].push(it);
+    });
+
+    var first = new Date(y, m, 1);
+    var daysInMonth = new Date(y, m + 1, 0).getDate();
+    var lead = first.getDay();
+    var rows = Math.ceil((lead + daysInMonth) / 7);
+    var start = new Date(y, m, 1 - lead);
+    var todayK = todayKey();
+
+    var html = '';
+    for (var i = 0; i < rows * 7; i++) {
+      var d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+      var k = dateKeyFromDate(d);
+      var out = d.getMonth() !== m;
+      var list = byDate[k] || [];
+      var sel = (k === ui.day);
+      var cls = 'cal-cell' + (out ? ' out' : '') + (k === todayK ? ' today' : '') + (sel ? ' sel' : '');
+      html += '<button type="button" class="' + cls + '" data-day="' + k + '" aria-pressed="' + sel + '" aria-label="' + (d.getMonth() + 1) + '월 ' + d.getDate() + '일, 기록 ' + list.length + '개">';
+      html += '<span class="cal-num">' + d.getDate() + '</span>';
+      html += '<span class="cal-dots">';
+      list.slice(0, 3).forEach(function (it) {
+        var c = catById(it.categoryId);
+        html += '<span class="cal-dot">' + esc(c ? c.emoji : '•') + '</span>';
+      });
+      if (list.length > 3) html += '<span class="cal-more">+' + (list.length - 3) + '</span>';
+      html += '</span></button>';
+    }
+    $('calGrid').innerHTML = html;
+
+    var sd = parseDateKey(ui.day) || new Date();
+    var dows = ['일', '월', '화', '수', '목', '금', '토'];
+    $('dayTitle').innerHTML = '<span>' + (sd.getMonth() + 1) + '월 ' + sd.getDate() + '일</span><span class="dow">' + dows[sd.getDay()] + '요일</span>';
+
+    var dayItems = (byDate[ui.day] || []).slice().sort(function (a, b) {
+      if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
+      return (b.updatedAt || 0) - (a.updatedAt || 0);
+    });
+    $('dayCount').textContent = dayItems.length ? dayItems.length + '개' : '';
+    var h = '';
+    dayItems.forEach(function (it) { h += cardHTML(it); });
+    $('dayList').innerHTML = h;
+    $('dayEmpty').hidden = dayItems.length > 0;
+  }
+
   function renderAll() {
     renderChips();
-    renderList();
+    renderViewTabs();
+    if (ui.view === 'month') {
+      $('listMeta').hidden = true;
+      $('list').hidden = true;
+      $('empty').hidden = true;
+      $('monthView').hidden = false;
+      renderMonth();
+    } else {
+      $('monthView').hidden = true;
+      $('listMeta').hidden = false;
+      $('list').hidden = false;
+      renderList();
+    }
   }
 
   function renderCatPicker() {
@@ -940,11 +1183,12 @@
     $('fPin').setAttribute('aria-checked', draftPin ? 'true' : 'false');
   }
 
-  function openEditor(id) {
+  function openEditor(id, dayKey) {
     var item = id ? findItem(id) : null;
     editingId = item ? item.id : null;
 
     if (item) {
+      $('fDate').value = itemDate(item);
       draftCat = item.categoryId;
       draftEmoji = item.emoji || defaultEmojiFor(item.categoryId);
       $('fTitle').value = item.title;
@@ -964,6 +1208,8 @@
       $('itemDelete').hidden = true;
       $('itemMeta').textContent = '';
       setSwitch(false);
+      $('fDate').value = isDateKey(dayKey) ? dayKey
+        : (ui.view === 'month' && isDateKey(ui.day) ? ui.day : todayKey());
     }
 
     $('emojiBtn').textContent = draftEmoji;
@@ -989,6 +1235,9 @@
     var note = $('fNote').value.trim();
     var url = cleanUrl($('fUrl').value);
     var cat = draftCat || state.categories[0].id;
+    var dateVal = str($('fDate').value).trim();
+    if (!parseDateKey(dateVal)) dateVal = '';
+    var savedDate = '';
 
     if (wasEditing) {
       var it = findItem(editingId);
@@ -999,24 +1248,34 @@
       it.note = note;
       it.url = url;
       it.pinned = draftPin;
+      if (dateVal) it.date = dateVal;
       it.updatedAt = now;
+      savedDate = itemDate(it);
     } else {
+      var newDate = dateVal || todayKey();
       state.items.unshift({
         id: uid(),
         emoji: draftEmoji,
         title: title,
         categoryId: cat,
+        date: newDate,
         note: note,
         url: url,
         pinned: draftPin,
         createdAt: now,
         updatedAt: now
       });
+      savedDate = newDate;
     }
 
     persist();
     closeSheet('itemSheet');
     editingId = null;
+    if (ui.view === 'month' && savedDate) {
+      ui.day = savedDate;
+      var sd = parseDateKey(savedDate);
+      if (sd) { ui.y = sd.getFullYear(); ui.m = sd.getMonth(); }
+    }
     renderAll();
     toast(wasEditing ? '수정했어요' : '추가했어요');
   }
@@ -1224,21 +1483,21 @@
     searchEl.addEventListener('input', function () {
       ui.query = searchEl.value;
       $('btnClearSearch').hidden = !searchEl.value;
-      renderList();
+      renderAll();
     });
     searchEl.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
         searchEl.value = '';
         ui.query = '';
         $('btnClearSearch').hidden = true;
-        renderList();
+        renderAll();
       }
     });
     $('btnClearSearch').addEventListener('click', function () {
       searchEl.value = '';
       ui.query = '';
       this.hidden = true;
-      renderList();
+      renderAll();
       searchEl.focus();
     });
 
@@ -1247,8 +1506,7 @@
       var chip = e.target.closest ? e.target.closest('[data-cat]') : null;
       if (!chip) return;
       ui.cat = chip.getAttribute('data-cat');
-      renderChips();
-      renderList();
+      renderAll();
       var active = $('chips').querySelector('.chip.on');
       if (active && active.scrollIntoView) {
         try { active.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (err) {}
@@ -1278,8 +1536,50 @@
       openEditor(card.getAttribute('data-card'));
     });
 
+    /* 보기 전환 */
+    $('btnViewList').addEventListener('click', function () { setView('list'); });
+    $('btnViewMonth').addEventListener('click', function () { setView('month'); });
+
+    /* 먼슬리 */
+    $('calPrev').addEventListener('click', function () { shiftMonth(-1); });
+    $('calNext').addEventListener('click', function () { shiftMonth(1); });
+    $('calToday').addEventListener('click', function () {
+      var t = new Date();
+      ui.y = t.getFullYear();
+      ui.m = t.getMonth();
+      ui.day = todayKey();
+      renderMonth();
+    });
+    $('calGrid').addEventListener('click', function (e) {
+      var cell = e.target.closest ? e.target.closest('[data-day]') : null;
+      if (!cell) return;
+      var k = cell.getAttribute('data-day');
+      var d = parseDateKey(k);
+      if (!d) return;
+      ui.day = k;
+      ui.y = d.getFullYear();
+      ui.m = d.getMonth();
+      renderMonth();
+    });
+    $('dayList').addEventListener('click', function (e) {
+      var t = e.target;
+      var pin = t.closest ? t.closest('[data-pin]') : null;
+      if (pin) {
+        e.preventDefault();
+        e.stopPropagation();
+        togglePin(pin.getAttribute('data-pin'));
+        return;
+      }
+      var link = t.closest ? t.closest('a[href]') : null;
+      if (link) return;
+      var card = t.closest ? t.closest('[data-card]') : null;
+      if (card) openEditor(card.getAttribute('data-card'));
+    });
+    $('btnAddDay').addEventListener('click', function () { openEditor(null, ui.day); });
+    $('fDateToday').addEventListener('click', function () { $('fDate').value = todayKey(); });
+
     /* 추가 / 설정 */
-    $('btnAdd').addEventListener('click', function () { openEditor(null); });
+    $('btnAdd').addEventListener('click', function () { openEditor(null, ui.view === 'month' ? ui.day : null); });
     $('btnSettings').addEventListener('click', function () {
       renderSettingsCats();
       openSheet('settingsSheet');
@@ -1430,7 +1730,7 @@
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden) {
         renderToday();
-        renderList();
+        renderAll();
       }
     });
 

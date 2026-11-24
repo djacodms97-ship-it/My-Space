@@ -30,12 +30,13 @@
     --chrome-flat:linear-gradient(180deg,#F8FAFC 0%,#E7EBF0 55%,#DCE1E8 100%);
     --steel:linear-gradient(145deg,#2D3139 0%,#1A1E24 100%);
     --card-bg:linear-gradient(155deg,#FAFBFC 0%,#ECEFF4 100%);
-    --hairline:repeating-linear-gradient(90deg,rgba(255,255,255,.6) 0 1px,rgba(150,160,178,.05) 1px 2px,rgba(255,255,255,0) 2px 5px);
+    --hairline:repeating-linear-gradient(90deg,rgba(255,255,255,.30) 0 1px,rgba(150,160,178,.022) 1px 2px,rgba(255,255,255,0) 2px 3px);
     --font:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',system-ui,'Segoe UI',Roboto,sans-serif;
     --radius:12px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  html{-webkit-text-size-adjust:100%;background:#E3E7ED}
+  html{-webkit-text-size-adjust:100%;background:#E3E7ED;scrollbar-width:none}
+  html::-webkit-scrollbar{width:0;height:0}
   body{
     margin:0;color:var(--text);font-family:var(--font);
     font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;
@@ -160,8 +161,8 @@
   }
   .card::before{
     content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
-    background:repeating-linear-gradient(90deg,rgba(255,255,255,.5) 0 1px,rgba(150,160,178,.035) 1px 4px);
-    opacity:.5;
+    background:repeating-linear-gradient(90deg,rgba(255,255,255,.35) 0 1px,rgba(150,160,178,.02) 1px 3px);
+    opacity:.45;
   }
   .card:active{
     background:linear-gradient(155deg,#F0F3F6 0%,#E2E7ED 100%);

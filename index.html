@@ -994,7 +994,7 @@
     if (ui.view === 'month') {
       if (!isDateKey(ui.day)) ui.day = todayKey();
       var d = parseDateKey(ui.day);
-      if (d && ui.y !== d.getFullYear() && ui.m !== d.getMonth()) {
+      if (d) {
         ui.y = d.getFullYear();
         ui.m = d.getMonth();
       }
@@ -1006,6 +1006,12 @@
     var d = new Date(ui.y, ui.m + delta, 1);
     ui.y = d.getFullYear();
     ui.m = d.getMonth();
+    var sel = parseDateKey(ui.day);
+    if (!sel || sel.getMonth() !== ui.m || sel.getFullYear() !== ui.y) {
+      var daysIn = new Date(ui.y, ui.m + 1, 0).getDate();
+      var da = sel ? Math.min(sel.getDate(), daysIn) : 1;
+      ui.day = dateKeyFromDate(new Date(ui.y, ui.m, da));
+    }
     renderMonth();
   }
 

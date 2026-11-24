@@ -13,12 +13,22 @@
 <iframe id="a" src="./index.html?pv=list" title="list"></iframe>
 <iframe id="b" src="./index.html?pv=month" title="month"></iframe>
 <script>
-  // 두 번째 프레임은 먼슬리 보기로 바로 연다.
-  document.getElementById('b').addEventListener('load', function () {
-    var d = this.contentDocument;
-    var btn = d && d.getElementById('btnViewMonth');
-    if (btn) btn.click();
-  });
+  // 모바일 화면 확인용: 아이폰에는 없는 데스크톱 스크롤바를 감추고,
+  // 두 번째 프레임은 먼슬리 보기로 연다.
+  function prep(f, month) {
+    var d = f.contentDocument;
+    if (!d) return;
+    var s = d.createElement('style');
+    s.textContent = 'html{scrollbar-width:none}::-webkit-scrollbar{width:0;height:0}';
+    d.head.appendChild(s);
+    if (month) {
+      var btn = d.getElementById('btnViewMonth');
+      if (btn) btn.click();
+    }
+  }
+  var a = document.getElementById('a'), b = document.getElementById('b');
+  a.addEventListener('load', function () { prep(this, false); });
+  b.addEventListener('load', function () { prep(this, true); });
 </script>
 </body>
 </html>

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>나의 허브</title>
-<meta name="description" content="채은 님의 개인 허브 — 다이어리, 일정, 트래커, 메모, 링크를 한 곳에.">
+<meta name="description" content="채은 님의 개인 허브 — 다이어리, 일정, 메모, 링크를 한 곳에.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -197,6 +197,16 @@
     border:1px solid rgba(170,178,190,.42);border-radius:6px;padding:1px 6px;
     font-size:11.5px;color:var(--sub);line-height:1.6;
   }
+  .card-info{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:7px}
+  .info-chip{
+    display:inline-flex;align-items:center;gap:4px;max-width:100%;min-width:0;
+    padding:2px 7px;border-radius:6px;
+    background:linear-gradient(180deg,#F7F9FC 0%,#E9EDF3 100%);
+    border:1px solid rgba(170,178,190,.42);
+    font-size:11.5px;color:var(--text-soft);line-height:1.6;
+  }
+  .info-chip .ic{flex:0 0 auto;font-size:11px;line-height:1;filter:grayscale(.15)}
+  .info-chip span.val{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .card-note{
     margin:7px 0 0;font-size:13.5px;line-height:1.58;color:var(--text-soft);
     white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;
@@ -298,6 +308,12 @@
   }
   .input::placeholder{color:#929BA8}
   textarea.input{resize:none;min-height:96px;line-height:1.55}
+  .field[hidden]{display:none}
+  .sched-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .sub-field{min-width:0}
+  .sub-field .label{margin-bottom:5px;font-size:11.5px}
+  .sub-field.wide{grid-column:1 / -1}
+  .sub-field .input{padding:10px 11px}
   .editor-top{display:flex;align-items:center;gap:10px;margin-bottom:16px}
   .emoji-btn{
     flex:0 0 auto;width:46px;height:46px;border-radius:12px;
@@ -627,6 +643,24 @@
       </div>
     </div>
 
+    <div class="field" id="schedFields" hidden>
+      <div class="sched-grid">
+        <div class="sub-field">
+          <div class="label">시간</div>
+          <input class="input" id="fTime" type="text" maxlength="60" placeholder="오후 7시 · 19:00" autocomplete="off">
+        </div>
+        <div class="sub-field">
+          <div class="label">장소</div>
+          <input class="input" id="fPlace" type="text" maxlength="60" placeholder="계산동 근처" autocomplete="off">
+        </div>
+        <div class="sub-field wide">
+          <div class="label">인원</div>
+          <input class="input" id="fPeople" type="text" maxlength="60" placeholder="3명 · 다혜, 지수" autocomplete="off">
+        </div>
+      </div>
+      <p class="hint" style="margin-top:8px">일정 카테고리에만 보이는 칸이에요 · 비워 두어도 괜찮아요</p>
+    </div>
+
     <div class="field">
       <div class="label">메모</div>
       <textarea class="input" id="fNote" placeholder="내용을 적어 두세요"></textarea>
@@ -718,15 +752,19 @@
      상수와 기본값
      ────────────────────────────────────────────── */
   var STORAGE_KEY = 'my-hub.v1';
-  var APP_VERSION = '1.3';
+  var APP_VERSION = '1.4';
 
   var DEFAULT_CATEGORIES = [
     { id: 'diary', emoji: '📔', name: '다이어리' },
     { id: 'schedule', emoji: '📅', name: '일정' },
-    { id: 'tracker', emoji: '📊', name: '트래커' },
     { id: 'memo', emoji: '📝', name: '메모' },
     { id: 'link', emoji: '🔗', name: '링크' }
   ];
+
+  /* v1.3 이하 기본 카테고리였던 '트래커' 정리용 값 */
+  var TRACKER_ID = 'tracker';
+  var TRACKER_DEFAULT_NAME = '트래커';
+  var SEED_TRACKER_TITLES = { '물 마시기 8잔': true };
 
   var EMOJIS = [
     '📔', '📅', '📊', '📝', '🔗', '⭐', '📌', '✅',
@@ -785,8 +823,35 @@
     });
     if (!cats.length) return null;
 
+    /* 트래커 정리 — 기본 이름('트래커')인 카테고리만 없앤다.
+       사용자가 이름을 바꿔 직접 쓰던 카테고리는 사용자의 것으로 보고 그대로 둔다. */
+    var trackerCat = null;
+    for (var ci = 0; ci < cats.length; ci++) {
+      if (cats[ci].id === TRACKER_ID) { trackerCat = cats[ci]; break; }
+    }
+    var keepTrackerCat = !!trackerCat && trackerCat.name !== TRACKER_DEFAULT_NAME;
+    if (trackerCat && !keepTrackerCat) {
+      cats = cats.filter(function (c) { return c !== trackerCat; });
+      /* 트래커만 있던 데이터라도 카테고리 하나는 남긴다 */
+      if (!cats.length) cats.push({ id: 'memo', emoji: '📝', name: '메모' });
+    }
+
     var known = {};
     cats.forEach(function (c) { known[c.id] = true; });
+
+    /* 트래커에 남아 있던 사용자 항목을 옮겨 담을 '메모' 카테고리 (없으면 만든다) */
+    function memoCatId() {
+      var i, c;
+      for (i = 0; i < cats.length; i++) {
+        c = cats[i];
+        if (c.id === 'memo' || c.name === '메모') return c.id;
+      }
+      c = { id: 'memo', emoji: '📝', name: '메모' };
+      while (cats.some(function (x) { return x.id === c.id; })) c.id = uid();
+      cats.push(c);
+      known[c.id] = true;
+      return c.id;
+    }
 
     var items = [];
     var rawItems = Array.isArray(src.items) ? src.items : [];
@@ -797,14 +862,25 @@
       var created = num(it.createdAt) || Date.now();
       var updated = num(it.updatedAt) || created;
       var dk = isDateKey(it.date) ? it.date : dateKeyFromTs(created);
+
+      var catId = str(it.categoryId).trim();
+      if (catId === TRACKER_ID && !keepTrackerCat) {
+        /* 기본 시드 항목은 지우고, 사용자가 직접 적었을 수 있는 항목은 메모로 옮긴다 */
+        if (SEED_TRACKER_TITLES[title]) return;
+        catId = memoCatId();
+      }
+
       items.push({
         id: str(it.id).trim() || uid(),
         emoji: str(it.emoji).trim() || '📝',
         title: title.slice(0, 200),
-        categoryId: known[it.categoryId] ? it.categoryId : cats[0].id,
+        categoryId: known[catId] ? catId : cats[0].id,
         date: dk,
         note: str(it.note).slice(0, 5000),
         url: str(it.url).slice(0, 1000),
+        time: str(it.time).trim().slice(0, 60),
+        place: str(it.place).trim().slice(0, 60),
+        people: str(it.people).trim().slice(0, 60),
         pinned: !!it.pinned,
         createdAt: created,
         updatedAt: updated
@@ -851,41 +927,35 @@
     });
     var items = [
       {
-        id: uid(), emoji: '📊', title: '물 마시기 8잔', categoryId: 'tracker',
-        date: todayKey(),
-        note: '오늘 5 / 8잔\n일어나서 한 잔, 식사 전에 한 잔씩.',
-        url: '', pinned: true, createdAt: now - 3 * D, updatedAt: now - 2 * H
-      },
-      {
         id: uid(), emoji: '📔', title: '오늘의 기록', categoryId: 'diary',
         date: todayKey(),
         note: '아침엔 조금 쌀쌀했고 오후엔 햇빛이 좋았다.\n내일은 일찍 자고 일어나기.',
-        url: '', pinned: false, createdAt: now - 5 * H, updatedAt: now - 4 * H
+        url: '', time: '', place: '', people: '', pinned: false, createdAt: now - 5 * H, updatedAt: now - 4 * H
       },
       {
         id: uid(), emoji: '📅', title: '이번 주 금요일 저녁 약속', categoryId: 'schedule',
         date: dateKeyFromTs(now + 3 * D),
-        note: '저녁 7시 · 계산동 근처\n가기 전에 30분 일찍 나가기.',
-        url: '', pinned: false, createdAt: now - 2 * D, updatedAt: now - 7 * H
+        note: '가기 전에 30분 일찍 나가기.',
+        url: '', time: '오후 7시', place: '계산동 근처', people: '3명', pinned: false, createdAt: now - 2 * D, updatedAt: now - 7 * H
       },
       {
         id: uid(), emoji: '📝', title: '장보기 목록', categoryId: 'memo',
         date: dateKeyFromTs(now - 1 * D),
         note: '우유, 달걀, 두부\n샴푸, 주방 세제\n간식은 하나만.',
-        url: '', pinned: false, createdAt: now - 1 * D, updatedAt: now - 1 * D
+        url: '', time: '', place: '', people: '', pinned: false, createdAt: now - 1 * D, updatedAt: now - 1 * D
       },
       {
         id: uid(), emoji: '🔗', title: '노션 템플릿 갤러리', categoryId: 'link',
         date: dateKeyFromTs(now - 2 * D),
         note: '레이아웃 참고용으로 모아 둔 곳.',
-        url: 'https://www.notion.so/templates', pinned: false,
+        url: 'https://www.notion.so/templates', time: '', place: '', people: '', pinned: false,
         createdAt: now - 4 * D, updatedAt: now - 2 * D
       },
       {
         id: uid(), emoji: '📝', title: '자기 전 스트레칭 루틴', categoryId: 'memo',
         date: dateKeyFromTs(now - 3 * D),
         note: '1. 어깨 돌리기 10회\n2. 목 좌우로 천천히 5회\n3. 벽 짚고 가슴 열기 20초',
-        url: '', pinned: false, createdAt: now - 5 * D, updatedAt: now - 3 * D
+        url: '', time: '', place: '', people: '', pinned: false, createdAt: now - 5 * D, updatedAt: now - 3 * D
       }
     ];
     return { categories: cats, items: items };
@@ -1028,7 +1098,7 @@
       }
       if (!q) return true;
       var c = catById(it.categoryId);
-      var hay = [it.title, it.note, it.url, c ? (c.emoji + ' ' + c.name) : ''].join(' ').toLowerCase();
+      var hay = [it.title, it.note, it.url, it.time, it.place, it.people, c ? (c.emoji + ' ' + c.name) : ''].join(' ').toLowerCase();
       return hay.indexOf(q) !== -1;
     });
     list.sort(function (a, b) {
@@ -1036,6 +1106,15 @@
       return (b.updatedAt || 0) - (a.updatedAt || 0);
     });
     return list;
+  }
+
+  function cardInfoHTML(it) {
+    var parts = [];
+    if (it.time) parts.push('<span class="info-chip"><span class="ic">🕒</span><span class="val">' + esc(it.time) + '</span></span>');
+    if (it.place) parts.push('<span class="info-chip"><span class="ic">📍</span><span class="val">' + esc(it.place) + '</span></span>');
+    if (it.people) parts.push('<span class="info-chip"><span class="ic">👥</span><span class="val">' + esc(it.people) + '</span></span>');
+    if (!parts.length) return '';
+    return '<div class="card-info">' + parts.join('') + '</div>';
   }
 
   function cardHTML(it) {
@@ -1063,6 +1142,7 @@
     html += '<button class="pin-btn' + (it.pinned ? ' on' : '') + '" data-pin="' + esc(it.id) + '" aria-label="' + (it.pinned ? '고정 해제' : '상단 고정') + '" aria-pressed="' + (!!it.pinned) + '">' + (it.pinned ? '★' : '☆') + '</button>';
     html += '</div>';
     html += '<div class="card-sub"><span class="badge">' + esc(catLabel) + '</span>' + dateBadge + '<span>' + esc(dateTxt) + '</span></div>';
+    html += cardInfoHTML(it);
     if (it.note) html += '<p class="card-note">' + esc(it.note) + '</p>';
     if (href) {
       html += '<a class="link-chip" href="' + esc(href) + '" target="_blank" rel="noopener noreferrer">';
@@ -1310,6 +1390,19 @@
     return c ? c.emoji : '📝';
   }
 
+  function isScheduleCat(id) {
+    var c = catById(id);
+    if (!c) return false;
+    return c.id === 'schedule' || c.name.indexOf('일정') !== -1;
+  }
+
+  /* 일정 카테고리일 때만 시간·장소·인원 칸을 보여 준다 */
+  function updateSchedFields() {
+    var on = isScheduleCat(draftCat);
+    var box = $('schedFields');
+    if (box) box.hidden = !on;
+  }
+
   function setSwitch(on) {
     draftPin = !!on;
     $('fPin').setAttribute('aria-checked', draftPin ? 'true' : 'false');
@@ -1326,6 +1419,9 @@
       $('fTitle').value = item.title;
       $('fNote').value = item.note || '';
       $('fUrl').value = item.url || '';
+      $('fTime').value = item.time || '';
+      $('fPlace').value = item.place || '';
+      $('fPeople').value = item.people || '';
       $('itemSheetTitle').textContent = '항목 편집';
       $('itemDelete').hidden = false;
       $('itemMeta').textContent = '작성 ' + timeLabel(item.createdAt) + ' · 수정 ' + timeLabel(item.updatedAt);
@@ -1336,6 +1432,9 @@
       $('fTitle').value = '';
       $('fNote').value = '';
       $('fUrl').value = '';
+      $('fTime').value = '';
+      $('fPlace').value = '';
+      $('fPeople').value = '';
       $('itemSheetTitle').textContent = '새 항목';
       $('itemDelete').hidden = true;
       $('itemMeta').textContent = '';
@@ -1346,6 +1445,7 @@
 
     $('emojiBtn').textContent = draftEmoji;
     renderCatPicker();
+    updateSchedFields();
     openSheet('itemSheet');
 
     if (!item) {
@@ -1367,6 +1467,10 @@
     var note = $('fNote').value.trim();
     var url = cleanUrl($('fUrl').value);
     var cat = draftCat || state.categories[0].id;
+    var sched = isScheduleCat(cat);
+    var timeVal = sched ? $('fTime').value.trim().slice(0, 60) : '';
+    var placeVal = sched ? $('fPlace').value.trim().slice(0, 60) : '';
+    var peopleVal = sched ? $('fPeople').value.trim().slice(0, 60) : '';
     var dateVal = str($('fDate').value).trim();
     if (!parseDateKey(dateVal)) dateVal = '';
     var savedDate = '';
@@ -1379,6 +1483,9 @@
       it.categoryId = cat;
       it.note = note;
       it.url = url;
+      it.time = timeVal;
+      it.place = placeVal;
+      it.people = peopleVal;
       it.pinned = draftPin;
       if (dateVal) it.date = dateVal;
       it.updatedAt = now;
@@ -1393,6 +1500,9 @@
         date: newDate,
         note: note,
         url: url,
+        time: timeVal,
+        place: placeVal,
+        people: peopleVal,
         pinned: draftPin,
         createdAt: now,
         updatedAt: now
@@ -1737,6 +1847,7 @@
       if (!chip) return;
       draftCat = chaperoneCat(chip.getAttribute('data-pick'));
       renderCatPicker();
+      updateSchedFields();
       if (!editingId) {
         $('emojiBtn').textContent = draftEmoji = defaultEmojiFor(draftCat);
       }
